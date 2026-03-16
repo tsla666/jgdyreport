@@ -1,3 +1,4 @@
 requests
 playwright
 schedule
+beautifulsoup4
