@@ -28,8 +28,8 @@ jobs:
           pip install -r requirements.txt
           # 安装Playwright
           pip install playwright
-          # 安装Chromium
-          npx playwright install chromium
+          # 安装所有必要的浏览器
+          playwright install
 
       # 运行脚本
       - name: Run script
