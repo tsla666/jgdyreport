@@ -9,7 +9,7 @@ from spider import crawl_research_data
 
 # 监控机构名单
 MONITORED_INSTITUTIONS = [
-    "睿郡资产", "混沌投资", "淡水泉", "高毅资产", "朱雀基金", 
+    "睿郡资产", "混沌投资", "淡水泉", "高毅资产", "朱雀基金",
     "东方马拉松", "聚鸣投资", "大朴资产", "Point72","康曼德资本","复胜资产"
 ]
 
@@ -18,15 +18,15 @@ def retrieve_research_data():
     print("开始检索机构调研数据...")
     # 调用爬虫模块获取数据
     research_data = []
-    
+
     # 导入必要的模块
     import sys
     sys.path.append('.')
     from spider import crawl_research_data
-    
+
     # 调用爬虫函数
     institution_data = crawl_research_data()
-    
+
     # 转换为预期的数据格式
     for institution, items in institution_data.items():
         for item in items:
@@ -38,7 +38,7 @@ def retrieve_research_data():
                 "详细链接": item.get("详细链接", ""),
                 "详细资料": item.get("详细资料", "")
             })
-    
+
     # 如果没有找到数据，使用模拟数据
     if not research_data:
         print("使用模拟数据...")
@@ -60,7 +60,7 @@ def retrieve_research_data():
                 "详细资料": "公司2025年业绩表现良好，主要产品在半导体设备领域市场份额持续提升，订单饱满，产能利用率高，未来有望保持稳定增长。"
             }
         ]
-    
+
     print(f"成功检索到 {len(research_data)} 条调研记录")
     return research_data
 
@@ -69,22 +69,26 @@ def call_deepseek_api(prompt):
     print("调用deepseek大模型...")
     import requests
     import json
-    
+
     # DeepSeek API配置
     api_key = os.environ.get("DEEPSEEK_API_KEY")
+    base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
+
     if not api_key:
         print("错误：未设置 DEEPSEEK_API_KEY 环境变量")
         # 出错时返回默认结果
         return '{"research_institutions": ["未知机构"], "core_logic": "公司业绩表现良好，行业地位突出", "management_view": "经营状况稳定，未来发展预期乐观"}'
-    url = "https://api.deepseek.com/v1/chat/completions"
-    
+
+    url = f"{base_url}/chat/completions"
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
     }
-    
+
     payload = {
-        "model": "deepseek-v4-flash",
+        "model": model,
         "messages": [
             {
                 "role": "user",
@@ -94,12 +98,12 @@ def call_deepseek_api(prompt):
         "temperature": 0.7,
         "max_tokens": 500
     }
-    
+
     try:
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-        
+
         # 提取生成的内容
         if "choices" in result and len(result["choices"]) > 0:
             content = result["choices"][0]["message"]["content"]
@@ -118,7 +122,7 @@ def call_deepseek_api(prompt):
 def analyze_research_data(research_data):
     print("开始分析调研数据...")
     analyzed_data = []
-    
+
     for item in research_data:
         # 构建prompt
         prompt = f"请分析以下上市公司的调研数据，并提取核心增长逻辑和管理层观点：\n"
@@ -131,10 +135,10 @@ def analyze_research_data(research_data):
         prompt += f"2. 管理层在交流中透露的最新经营观点或预期（重点描述订单排产/产能利用率/对未来毛利的预期）\n"
         prompt += f"请以JSON格式返回结果，包含research_institutions、core_logic、management_view字段"
         prompt += f"确保返回的是纯JSON格式，不要包含其他文本"
-        
+
         # 调用deepseek API
         response = call_deepseek_api(prompt)
-        
+
         # 解析响应
         try:
             # 尝试直接解析JSON
@@ -164,7 +168,7 @@ def analyze_research_data(research_data):
                 "core_logic": "公司业绩表现良好，行业地位突出",
                 "management_view": "经营状况稳定，未来发展预期乐观"
             }
-        
+
         # 构建分析结果
         analyzed_data.append({
             "name": item["name"],
@@ -174,7 +178,7 @@ def analyze_research_data(research_data):
             "core_logic": analysis_result.get("core_logic", "公司业绩表现良好，行业地位突出"),
             "management_view": analysis_result.get("management_view", "经营状况稳定，未来发展预期乐观")
         })
-    
+
     return analyzed_data
 
 # 生成结构化输出
@@ -182,7 +186,7 @@ def generate_structured_output(analyzed_data):
     print("生成结构化输出...")
     if not analyzed_data:
         return "📅 一周调研追踪 按机构分类\n今日名单内机构无新增调研记录"
-    
+
     # 按机构分类
     institution_dict = {}
     for item in analyzed_data:
@@ -190,9 +194,9 @@ def generate_structured_output(analyzed_data):
             if institution not in institution_dict:
                 institution_dict[institution] = []
             institution_dict[institution].append(item)
-    
+
     output = "📅 一周调研追踪 按机构分类\n\n"
-    
+
     # 按机构输出
     for institution, items in institution_dict.items():
         output += f"【{institution}】\n\n"
@@ -201,7 +205,7 @@ def generate_structured_output(analyzed_data):
             output += f"调研日期：{item['research_date']}\n\n"
             output += f"核心逻辑：{item['core_logic'][:100]}..." if len(item['core_logic']) > 100 else f"核心逻辑：{item['core_logic']}\n"
             output += f"管理层观点：{item['management_view']}\n\n"
-    
+
     return output
 
 # 发送到飞书函数
@@ -209,14 +213,14 @@ def send_to_feishu(content):
     print("发送到飞书...")
     import requests
     import json
-    
+
     # 飞书webhook URL
     webhook_url = os.environ.get("FEISHU_WEBHOOK_URL")
     if not webhook_url:
         print("错误：未设置 FEISHU_WEBHOOK_URL 环境变量")
         print(content)
         return
-    
+
     # 构建请求数据
     payload = {
         "msg_type": "text",
@@ -224,11 +228,11 @@ def send_to_feishu(content):
             "text": content
         }
     }
-    
+
     headers = {
         "Content-Type": "application/json"
     }
-    
+
     try:
         response = requests.post(webhook_url, headers=headers, json=payload)
         response.raise_for_status()
@@ -244,7 +248,7 @@ def main():
     print("智能体系统启动...")
     # 检索数据
     research_data = retrieve_research_data()
-    
+
     # 打印爬取的数据内容
     print("\n爬取的原始数据内容:")
     for item in research_data:
@@ -254,7 +258,7 @@ def main():
         print(f"调研日期: {item['调研日期']}")
         print(f"详细链接: {item.get('详细链接', '无')}")
         print(f"详细资料: {item.get('详细资料', '无')[:200]}..." if item.get('详细资料') else "详细资料: 无")
-    
+
     # 分析数据
     analyzed_data = analyze_research_data(research_data)
     # 生成输出
@@ -266,9 +270,9 @@ def main():
 def schedule_task():
     # 每2天晚8点半执行
     schedule.every(2).days.at("20:30").do(main)
-    
+
     print("定时任务已设置，每2天20:30执行")
-    
+
     # 持续运行
     while True:
         schedule.run_pending()
@@ -278,18 +282,30 @@ if __name__ == "__main__":
     # 测试环境变量读取
     print("测试环境变量读取...")
     test_api_key = os.environ.get("DEEPSEEK_API_KEY")
+    test_base_url = os.environ.get("DEEPSEEK_BASE_URL")
+    test_model = os.environ.get("DEEPSEEK_MODEL")
     test_webhook = os.environ.get("FEISHU_WEBHOOK_URL")
-    
+
     if test_api_key:
         print("✓ DEEPSEEK_API_KEY 环境变量已设置")
     else:
         print("✗ DEEPSEEK_API_KEY 环境变量未设置")
-    
+
+    if test_base_url:
+        print(f"✓ DEEPSEEK_BASE_URL 环境变量已设置: {test_base_url}")
+    else:
+        print("✗ DEEPSEEK_BASE_URL 环境变量未设置，使用默认值: https://api.deepseek.com/v1")
+
+    if test_model:
+        print(f"✓ DEEPSEEK_MODEL 环境变量已设置: {test_model}")
+    else:
+        print("✗ DEEPSEEK_MODEL 环境变量未设置，使用默认值: deepseek-v4-flash")
+
     if test_webhook:
         print("✓ FEISHU_WEBHOOK_URL 环境变量已设置")
     else:
         print("✗ FEISHU_WEBHOOK_URL 环境变量未设置")
-    
+
     # 立即执行一次
     main()
     # 注释掉定时任务，只运行一次以便测试
