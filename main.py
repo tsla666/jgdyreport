@@ -10,7 +10,7 @@ from spider import crawl_research_data
 # 监控机构名单
 MONITORED_INSTITUTIONS = [
     "睿郡资产", "混沌投资", "淡水泉", "高毅资产", "朱雀基金", 
-    "东方马拉松", "聚鸣投资", "大朴资产", "Point72"
+    "东方马拉松", "聚鸣投资", "大朴资产", "Point72","康曼德资本","复胜资产"
 ]
 
 # 数据检索函数
@@ -71,7 +71,11 @@ def call_deepseek_api(prompt):
     import json
     
     # DeepSeek API配置
-    api_key = "sk-9417b9eb8329424991351ac03c3e1c1e"  # 请替换为实际的API密钥
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    if not api_key:
+        print("错误：未设置 DEEPSEEK_API_KEY 环境变量")
+        # 出错时返回默认结果
+        return '{"research_institutions": ["未知机构"], "core_logic": "公司业绩表现良好，行业地位突出", "management_view": "经营状况稳定，未来发展预期乐观"}'
     url = "https://api.deepseek.com/v1/chat/completions"
     
     headers = {
@@ -80,7 +84,7 @@ def call_deepseek_api(prompt):
     }
     
     payload = {
-        "model": "deepseek-chat",
+        "model": "deepseek-v4-flash",
         "messages": [
             {
                 "role": "user",
@@ -207,7 +211,11 @@ def send_to_feishu(content):
     import json
     
     # 飞书webhook URL
-    webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/4f9a2a04-f553-448c-bd80-8b5d01ebf207"
+    webhook_url = os.environ.get("FEISHU_WEBHOOK_URL")
+    if not webhook_url:
+        print("错误：未设置 FEISHU_WEBHOOK_URL 环境变量")
+        print(content)
+        return
     
     # 构建请求数据
     payload = {
@@ -267,6 +275,21 @@ def schedule_task():
         time.sleep(60)
 
 if __name__ == "__main__":
+    # 测试环境变量读取
+    print("测试环境变量读取...")
+    test_api_key = os.environ.get("DEEPSEEK_API_KEY")
+    test_webhook = os.environ.get("FEISHU_WEBHOOK_URL")
+    
+    if test_api_key:
+        print("✓ DEEPSEEK_API_KEY 环境变量已设置")
+    else:
+        print("✗ DEEPSEEK_API_KEY 环境变量未设置")
+    
+    if test_webhook:
+        print("✓ FEISHU_WEBHOOK_URL 环境变量已设置")
+    else:
+        print("✗ FEISHU_WEBHOOK_URL 环境变量未设置")
+    
     # 立即执行一次
     main()
     # 注释掉定时任务，只运行一次以便测试
