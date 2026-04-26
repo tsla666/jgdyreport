@@ -72,7 +72,7 @@ def call_deepseek_api(prompt):
 
     # DeepSeek API配置
     api_key = os.environ.get("DEEPSEEK_API_KEY")
-    base_url = os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
+    base_url = os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1"
     model = os.environ.get("DEEPSEEK_MODEL") or "deepseek-v4-flash"
 
     if not api_key:
@@ -215,8 +215,7 @@ def send_to_feishu(content):
     import json
 
     # 飞书webhook地址，支持多个用逗号分隔
-    feishu_webhooks = (os.environ.get("FEISHU_WEBHOOK") or '').split(',')
-    feishu_webhooks = [w.strip() for w in feishu_webhooks if w.strip()]
+    feishu_webhooks = [w.strip() for w in (os.environ.get("FEISHU_WEBHOOK") or '').split(',') if w.strip()]
 
     if not feishu_webhooks:
         print("错误：未设置 FEISHU_WEBHOOK 环境变量")
@@ -248,11 +247,8 @@ def send_to_feishu(content):
 
     # 遍历每个webhook地址发送
     for webhook_url in feishu_webhooks:
-        # 确保URL有协议前缀
-        if not webhook_url.startswith(('http://', 'https://')):
-            webhook_url = 'https://' + webhook_url
-
         try:
+            print(f"正在发送到飞书机器人: {webhook_url[:50]}...")
             response = requests.post(webhook_url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
