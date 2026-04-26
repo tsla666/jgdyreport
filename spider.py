@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 # 监控机构名单
 MONITORED_INSTITUTIONS = [
     "睿郡资产", "混沌投资", "淡水泉", "高毅资产", "朱雀基金", 
-    "东方马拉松", "聚鸣投资", "大朴资产", "Point72"
+    "东方马拉松", "聚鸣投资", "大朴资产", "Point72", "康曼德资本", "复胜资产"
 ]
 
 # 东方财富网机构调研频道URL
