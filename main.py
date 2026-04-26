@@ -215,9 +215,9 @@ def send_to_feishu(content):
     import json
 
     # 飞书webhook URL
-    webhook_url = os.environ.get("feishu_webhook")
+    webhook_url = os.environ.get("FEISHU_WEBHOOK")
     if not webhook_url:
-        print("错误：未设置 feishu_webhook 环境变量")
+        print("错误：未设置 FEISHU_WEBHOOK 环境变量")
         print("请在GitHub仓库的Settings → Secrets and variables → Actions中设置此环境变量")
         print(content)
         return
