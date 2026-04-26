@@ -10,7 +10,7 @@ from spider import crawl_research_data
 # 监控机构名单
 MONITORED_INSTITUTIONS = [
     "睿郡资产", "混沌投资", "淡水泉", "高毅资产", "朱雀基金",
-    "东方马拉松", "聚鸣投资", "大朴资产", "Point72","康曼德资本","复胜资产"
+    "东方马拉松", "聚鸣投资", "大朴资产", "Point72", "康曼德资本", "复胜资产"
 ]
 
 # 数据检索函数
@@ -214,19 +214,31 @@ def send_to_feishu(content):
     import requests
     import json
 
-    # 飞书webhook URL
-    webhook_url = os.environ.get("FEISHU_WEBHOOK")
-    if not webhook_url:
+    # 飞书webhook地址，支持多个用逗号分隔
+    feishu_webhooks = (os.environ.get("FEISHU_WEBHOOK") or '').split(',')
+    feishu_webhooks = [w.strip() for w in feishu_webhooks if w.strip()]
+
+    if not feishu_webhooks:
         print("错误：未设置 FEISHU_WEBHOOK 环境变量")
         print("请在GitHub仓库的Settings → Secrets and variables → Actions中设置此环境变量")
         print(content)
         return
 
-    # 构建请求数据
+    # 构建请求数据 - 使用飞书post消息格式
     payload = {
-        "msg_type": "text",
+        "msg_type": "post",
         "content": {
-            "text": content
+            "post": {
+                "zh_cn": {
+                    "title": "📅 一周调研追踪",
+                    "content": [
+                        [{
+                            "tag": "text",
+                            "text": content
+                        }]
+                    ]
+                }
+            }
         }
     }
 
@@ -234,15 +246,21 @@ def send_to_feishu(content):
         "Content-Type": "application/json"
     }
 
-    try:
-        response = requests.post(webhook_url, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
-        print(f"飞书发送结果: {result}")
-        print(content)
-    except Exception as e:
-        print(f"发送到飞书时出错: {e}")
-        print(content)
+    # 遍历每个webhook地址发送
+    for webhook_url in feishu_webhooks:
+        # 确保URL有协议前缀
+        if not webhook_url.startswith(('http://', 'https://')):
+            webhook_url = 'https://' + webhook_url
+
+        try:
+            response = requests.post(webhook_url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            print(f"飞书发送结果: {result}")
+        except Exception as e:
+            print(f"发送到飞书时出错: {e}")
+
+    print(content)
 
 # 主函数
 def main():
