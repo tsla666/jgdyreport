@@ -214,14 +214,8 @@ def send_to_feishu(content):
     import requests
     import json
 
-    # 飞书webhook地址，支持多个用逗号分隔
-    feishu_webhooks = [w.strip() for w in (os.environ.get("FEISHU_WEBHOOK") or '').split(',') if w.strip()]
-
-    if not feishu_webhooks:
-        print("错误：未设置 FEISHU_WEBHOOK 环境变量")
-        print("请在GitHub仓库的Settings → Secrets and variables → Actions中设置此环境变量")
-        print(content)
-        return
+    # 飞书webhook URL
+    webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/4f9a2a04-f553-448c-bd80-8b5d01ebf207"
 
     # 构建请求数据 - 使用飞书post消息格式
     payload = {
@@ -245,16 +239,14 @@ def send_to_feishu(content):
         "Content-Type": "application/json"
     }
 
-    # 遍历每个webhook地址发送
-    for webhook_url in feishu_webhooks:
-        try:
-            print(f"正在发送到飞书机器人: {webhook_url[:50]}...")
-            response = requests.post(webhook_url, headers=headers, json=payload)
-            response.raise_for_status()
-            result = response.json()
-            print(f"飞书发送结果: {result}")
-        except Exception as e:
-            print(f"发送到飞书时出错: {e}")
+    try:
+        print(f"正在发送到飞书机器人: {webhook_url[:50]}...")
+        response = requests.post(webhook_url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        print(f"飞书发送结果: {result}")
+    except Exception as e:
+        print(f"发送到飞书时出错: {e}")
 
     print(content)
 
