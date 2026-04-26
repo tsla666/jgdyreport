@@ -132,7 +132,7 @@ def analyze_research_data(research_data):
 详细资料：{item.get('详细资料', '')}
 
 请直接输出JSON格式结果，包含以下字段：
-{{"research_institutions": "调研机构", "core_logic": "核心增长逻辑（50字以内）", "management_view": "管理层观点（50字以内）"}}
+{{"core_logic": "核心增长逻辑（50字以内）", "management_view": "管理层观点（50字以内）"}}
 
 只输出JSON，不要其他内容。"""
 
@@ -173,7 +173,6 @@ def analyze_research_data(research_data):
 
             if core_logic_match or management_view_match:
                 analysis_result = {
-                    "research_institutions": item["机构名称"],
                     "core_logic": core_logic_match.group(1).strip() if core_logic_match else "见详细资料",
                     "management_view": management_view_match.group(1).strip() if management_view_match else "见详细资料"
                 }
@@ -183,7 +182,6 @@ def analyze_research_data(research_data):
             if not item.get('详细资料') or len(item.get('详细资料', '')) < 10:
                 print(f"警告：{item['name']} 详细资料为空或太短，跳过分析")
                 analysis_result = {
-                    "research_institutions": item["机构名称"],
                     "core_logic": "详细资料暂无",
                     "management_view": "详细资料暂无"
                 }
@@ -191,16 +189,15 @@ def analyze_research_data(research_data):
                 # API可能出了问题，使用原始详细资料
                 print(f"警告：{item['name']} API解析失败，使用原始详细资料")
                 analysis_result = {
-                    "research_institutions": item["机构名称"],
                     "core_logic": item['详细资料'][:100] + "..." if len(item['详细资料']) > 100 else item['详细资料'],
                     "management_view": "见详细资料"
                 }
 
-        # 构建分析结果
+        # 构建分析结果 - 直接使用爬虫中的机构名称，不依赖API返回
         analyzed_data.append({
             "name": item["name"],
             "code": item["code"],
-            "research_institutions": analysis_result.get("research_institutions", [item["机构名称"]]),
+            "institution": item["机构名称"],  # 直接使用爬虫返回的机构名称
             "research_date": item["调研日期"],
             "core_logic": analysis_result.get("core_logic", "无"),
             "management_view": analysis_result.get("management_view", "无")
@@ -217,10 +214,10 @@ def generate_structured_output(analyzed_data):
     # 按机构分类
     institution_dict = {}
     for item in analyzed_data:
-        for institution in item['research_institutions']:
-            if institution not in institution_dict:
-                institution_dict[institution] = []
-            institution_dict[institution].append(item)
+        institution = item['institution']
+        if institution not in institution_dict:
+            institution_dict[institution] = []
+        institution_dict[institution].append(item)
 
     output = "📅 一周调研追踪 按机构分类\n\n"
 
