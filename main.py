@@ -65,7 +65,7 @@ def retrieve_research_data():
     return research_data
 
 # 调用deepseek大模型分析数据
-def call_deepseek_api(prompt):
+def call_deepseek_api(prompt, company_info):
     print("调用deepseek大模型...")
     import requests
     import json
@@ -77,8 +77,7 @@ def call_deepseek_api(prompt):
 
     if not api_key:
         print("错误：未设置 DEEPSEEK_API_KEY 环境变量")
-        # 出错时返回默认结果
-        return '{"research_institutions": ["未知机构"], "core_logic": "公司业绩表现良好，行业地位突出", "management_view": "经营状况稳定，未来发展预期乐观"}'
+        return None
 
     url = f"{base_url}/chat/completions"
 
@@ -96,27 +95,24 @@ def call_deepseek_api(prompt):
             }
         ],
         "temperature": 0.7,
-        "max_tokens": 500
+        "max_tokens": 1500
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
         response.raise_for_status()
         result = response.json()
 
         # 提取生成的内容
         if "choices" in result and len(result["choices"]) > 0:
             content = result["choices"][0]["message"]["content"]
-            print(f"DeepSeek返回结果: {content}")
             return content
         else:
-            print("DeepSeek API返回格式不正确")
-            # 返回默认结果
-            return '{"research_institutions": ["未知机构"], "core_logic": "公司业绩表现良好，行业地位突出", "management_view": "经营状况稳定，未来发展预期乐观"}'
+            print("DeepSeek API返回格式不正确，缺少choices字段")
+            return None
     except Exception as e:
         print(f"调用DeepSeek API时出错: {e}")
-        # 出错时返回默认结果
-        return '{"research_institutions": ["未知机构"], "core_logic": "公司业绩表现良好，行业地位突出", "management_view": "经营状况稳定，未来发展预期乐观"}'
+        return None
 
 # 分析调研数据函数
 def analyze_research_data(research_data):
@@ -124,59 +120,90 @@ def analyze_research_data(research_data):
     analyzed_data = []
 
     for item in research_data:
+        print(f"\n正在分析: {item['name']} ({item['code']})")
+
         # 构建prompt
-        prompt = f"请分析以下上市公司的调研数据，并提取核心增长逻辑和管理层观点：\n"
-        prompt += f"公司名称：{item['name']}\n"
-        prompt += f"股票代码：{item['code']}\n"
-        prompt += f"调研机构：{item['机构名称']}\n"
-        prompt += f"调研日期：{item['调研日期']}\n"
-        prompt += f"详细资料：{item.get('详细资料', '')}\n"
-        prompt += f"请输出：1. 核心增长逻辑（为什么被调研，重点描述行业地位/技术突破/业绩拐点）\n"
-        prompt += f"2. 管理层在交流中透露的最新经营观点或预期（重点描述订单排产/产能利用率/对未来毛利的预期）\n"
-        prompt += f"请以JSON格式返回结果，包含research_institutions、core_logic、management_view字段"
-        prompt += f"确保返回的是纯JSON格式，不要包含其他文本"
+        prompt = f"""请分析以下上市公司的调研数据，并提取核心增长逻辑和管理层观点：
+
+公司名称：{item['name']}
+股票代码：{item['code']}
+调研机构：{item['机构名称']}
+调研日期：{item['调研日期']}
+详细资料：{item.get('详细资料', '')}
+
+请直接输出JSON格式结果，包含以下字段：
+{{"research_institutions": "调研机构", "core_logic": "核心增长逻辑（50字以内）", "management_view": "管理层观点（50字以内）"}}
+
+只输出JSON，不要其他内容。"""
 
         # 调用deepseek API
-        response = call_deepseek_api(prompt)
+        response = call_deepseek_api(prompt, item)
 
         # 解析响应
-        try:
-            # 尝试直接解析JSON
-            analysis_result = json.loads(response)
-        except json.JSONDecodeError:
-            # 如果解析失败，尝试提取JSON部分
-            import re
-            json_match = re.search(r'\{[^}]*\}', response)
-            if json_match:
+        analysis_result = None
+        if response:
+            try:
+                # 尝试直接解析JSON
+                analysis_result = json.loads(response)
+            except json.JSONDecodeError:
+                # 如果解析失败，尝试清理和提取JSON
+                import re
+                # 移除可能的markdown代码块标记
+                clean_response = re.sub(r'```json\s*', '', response)
+                clean_response = re.sub(r'```\s*', '', clean_response)
+                clean_response = clean_response.strip()
+
                 try:
-                    analysis_result = json.loads(json_match.group(0))
+                    analysis_result = json.loads(clean_response)
                 except json.JSONDecodeError:
-                    print("无法从DeepSeek响应中提取有效的JSON")
-                    analysis_result = {
-                        "core_logic": "公司业绩表现良好，行业地位突出",
-                        "management_view": "经营状况稳定，未来发展预期乐观"
-                    }
-            else:
-                print("DeepSeek响应中没有找到JSON格式内容")
+                    # 再尝试查找JSON对象
+                    json_match = re.search(r'\{[\s\S]*\}', clean_response)
+                    if json_match:
+                        try:
+                            analysis_result = json.loads(json_match.group(0))
+                        except json.JSONDecodeError:
+                            pass
+
+        # 如果没有有效的解析结果，尝试从原始响应中提取有用信息
+        if not analysis_result and response:
+            # 尝试从响应中提取关键信息
+            import re
+            core_logic_match = re.search(r'core_logic["\s:]+([^}"]+)', response)
+            management_view_match = re.search(r'management_view["\s:]+([^}"]+)', response)
+
+            if core_logic_match or management_view_match:
                 analysis_result = {
-                    "core_logic": "公司业绩表现良好，行业地位突出",
-                    "management_view": "经营状况稳定，未来发展预期乐观"
+                    "research_institutions": item["机构名称"],
+                    "core_logic": core_logic_match.group(1).strip() if core_logic_match else "见详细资料",
+                    "management_view": management_view_match.group(1).strip() if management_view_match else "见详细资料"
                 }
-        except Exception as e:
-            print(f"解析大模型响应时出错: {e}")
-            analysis_result = {
-                "core_logic": "公司业绩表现良好，行业地位突出",
-                "management_view": "经营状况稳定，未来发展预期乐观"
-            }
+
+        # 如果仍然没有结果，检查详细资料是否为空
+        if not analysis_result:
+            if not item.get('详细资料') or len(item.get('详细资料', '')) < 10:
+                print(f"警告：{item['name']} 详细资料为空或太短，跳过分析")
+                analysis_result = {
+                    "research_institutions": item["机构名称"],
+                    "core_logic": "详细资料暂无",
+                    "management_view": "详细资料暂无"
+                }
+            else:
+                # API可能出了问题，使用原始详细资料
+                print(f"警告：{item['name']} API解析失败，使用原始详细资料")
+                analysis_result = {
+                    "research_institutions": item["机构名称"],
+                    "core_logic": item['详细资料'][:100] + "..." if len(item['详细资料']) > 100 else item['详细资料'],
+                    "management_view": "见详细资料"
+                }
 
         # 构建分析结果
         analyzed_data.append({
             "name": item["name"],
             "code": item["code"],
-            "research_institutions": [item["机构名称"]],
+            "research_institutions": analysis_result.get("research_institutions", [item["机构名称"]]),
             "research_date": item["调研日期"],
-            "core_logic": analysis_result.get("core_logic", "公司业绩表现良好，行业地位突出"),
-            "management_view": analysis_result.get("management_view", "经营状况稳定，未来发展预期乐观")
+            "core_logic": analysis_result.get("core_logic", "无"),
+            "management_view": analysis_result.get("management_view", "无")
         })
 
     return analyzed_data
@@ -204,7 +231,7 @@ def generate_structured_output(analyzed_data):
             output += f"{item['name']} ({item['code']})\n"
             output += f"调研日期：{item['research_date']}\n\n"
             output += f"核心逻辑：{item['core_logic'][:100]}..." if len(item['core_logic']) > 100 else f"核心逻辑：{item['core_logic']}\n"
-            output += f"管理层观点：{item['management_view']}\n\n"
+            output += f"管理层观点：{item['management_view'][:100]}..." if len(item['management_view']) > 100 else f"管理层观点：{item['management_view']}\n\n"
 
     return output
 
@@ -240,7 +267,6 @@ def send_to_feishu(content):
     }
 
     try:
-        print(f"正在发送到飞书机器人: {webhook_url[:50]}...")
         response = requests.post(webhook_url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
