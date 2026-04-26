@@ -72,8 +72,8 @@ def call_deepseek_api(prompt):
 
     # DeepSeek API配置
     api_key = os.environ.get("DEEPSEEK_API_KEY")
-    base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
+    base_url = os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
+    model = os.environ.get("DEEPSEEK_MODEL") or "deepseek-v4-flash"
 
     if not api_key:
         print("错误：未设置 DEEPSEEK_API_KEY 环境变量")
