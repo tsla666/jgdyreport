@@ -279,34 +279,8 @@ def schedule_task():
         time.sleep(60)
 
 if __name__ == "__main__":
-    # 测试环境变量读取
-    print("测试环境变量读取...")
-    test_api_key = os.environ.get("DEEPSEEK_API_KEY")
-    test_base_url = os.environ.get("DEEPSEEK_BASE_URL")
-    test_model = os.environ.get("DEEPSEEK_MODEL")
-    test_webhook = os.environ.get("FEISHU_WEBHOOK_URL")
 
-    if test_api_key:
-        print("✓ DEEPSEEK_API_KEY 环境变量已设置")
-    else:
-        print("✗ DEEPSEEK_API_KEY 环境变量未设置")
 
-    if test_base_url:
-        print(f"✓ DEEPSEEK_BASE_URL 环境变量已设置: {test_base_url}")
-    else:
-        print("✗ DEEPSEEK_BASE_URL 环境变量未设置，使用默认值: https://api.deepseek.com/v1")
-
-    if test_model:
-        print(f"✓ DEEPSEEK_MODEL 环境变量已设置: {test_model}")
-    else:
-        print("✗ DEEPSEEK_MODEL 环境变量未设置，使用默认值: deepseek-v4-flash")
-
-    if test_webhook:
-        print("✓ FEISHU_WEBHOOK_URL 环境变量已设置")
-    else:
-        print("✗ FEISHU_WEBHOOK_URL 环境变量未设置")
-
-    # 立即执行一次
+   
     main()
-    # 注释掉定时任务，只运行一次以便测试
-    # schedule_task()
+   
